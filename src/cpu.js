@@ -9,6 +9,7 @@ class CPU {
             'ip', 'acc',
             'r1', 'r2', 'r3', 'r4',
             'r5', 'r6', 'r7', 'r8',
+            'sp', 'fp',
         ]
 
         this.registers = createMemory(this.registerNames.length * 2)
@@ -17,6 +18,11 @@ class CPU {
             map[name] = i * 2
             return map
         }, {})
+
+        this.setRegister('sp', memory.byteLength - 1 - 1)
+        this.setRegister('fp', memory.byteLength - 1 - 1)
+
+        this.stackFrameSize = 0
     }
 
     debug() {
@@ -32,7 +38,8 @@ class CPU {
         this.memory.getUint8(address + i)
       ).map(v => `0x${v.toString(16).padStart(2, '0')}`);
   
-      console.log(`0x${address.toString(16).padStart(4, '0')}: ${nextEightBytes.join(' ')}`);
+      const result = `0x${address.toString(16).padStart(4, '0')}: ${nextEightBytes.join(' ')}`
+      console.log(result);
     }
 
     getRegister(name) {
@@ -63,20 +70,38 @@ class CPU {
         return instruction
     }
 
+    push(value) {
+        const spAddress = this.getRegister('sp')
+        this.memory.setUint16(spAddress, value)
+        this.setRegister('sp', spAddress - 2)
+        this.stackFrameSize += 2
+    }
+
+    pop() {
+        const nextSpAddress = this.getRegister('sp') + 2
+        this.setRegister('sp', nextSpAddress)
+        this.stackFrameSize -= 2
+        return this.memory.getUint16(nextSpAddress)
+    }
+
+    fetchRegisterIndex() {
+        return (this.fetch() % this.registerNames.length) * 2
+    }
+
     execute(instruction) {
         switch (instruction) {
             // Move literal into register
             case instructions.MOV_LIT_REG: {
                 const literal = this.fetch16()
-                const register = (this.fetch() % this.registerNames.length) * 2
+                const register = this.fetchRegisterIndex()
                 this.registers.setUint16(register, literal)
                 return
             }
             
             // Move register into register
             case instructions.MOV_REG_REG: {
-                const registerFrom = (this.fetch() % this.registerNames.length) * 2
-                const registerto = (this.fetch() % this.registerNames.length) * 2
+                const registerFrom = this.fetchRegisterIndex()
+                const registerto = this.fetchRegisterIndex()
                 const value = this.registers.getUint16(registerFrom)
                 this.registers.setUint16(registerto, value)
                 return
@@ -84,7 +109,7 @@ class CPU {
 
             // Move register into memory
             case instructions.MOV_REG_MEM: {
-                const registerFrom = (this.fetch() % this.registerNames.length) * 2
+                const registerFrom = this.fetchRegisterIndex()
                 const address = this.fetch16()
                 const value = this.registers.getUint16(registerFrom)
                 this.memory.setUint16(address, value)
@@ -94,7 +119,7 @@ class CPU {
             // Move memory into register
             case instructions.MOV_MEM_REG: {
                 const address = this.fetch16()
-                const registerTo = (this.fetch() % this.registerNames.length) * 2
+                const registerTo = this.fetchRegisterIndex()
                 const value = this.memory.getUint16(address)
                 this.registers.setUint16(registerTo, value)
                 return
@@ -122,6 +147,26 @@ class CPU {
               }
       
               return;
+            }
+            
+            // push literal
+            case instructions.PSH_LIT: {
+                const value = this.fetch16()
+                this.push(value)
+                return
+            }
+
+            // push register    
+            case instructions.PSH_REG: {
+                const registerIndex = this.fetchRegisterIndex()
+                this.push(this.registers.getUint16(registerIndex))
+            }
+
+            // pop
+            case instructions.POP: {
+                const registerIndex = this.fetchRegisterIndex()
+                const value = this.pop()
+                this.registers.setUint16(registerIndex, value)
             }
         }
     }
