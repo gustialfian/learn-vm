@@ -243,12 +243,10 @@ t.test('POP', t => {
     writableBytes[i++] = 0x52;
     writableBytes[i++] = 0x52;
     cpu.step()
-    console.log(viewMemoryAt(cpu.memory, 0xffff - 1 - 6));
 
     writableBytes[i++] = instructions.POP;
     writableBytes[i++] = R2
     cpu.step()
-    console.log(viewMemoryAt(cpu.memory, 0xffff - 1 - 6));
 
     const got = toFormatedHex(cpu.getRegister('r2'))
 

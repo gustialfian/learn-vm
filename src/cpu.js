@@ -84,6 +84,22 @@ class CPU {
         return this.memory.getUint16(nextSpAddress)
     }
 
+    pushState() {
+        this.push(this.getRegister('r1'));
+        this.push(this.getRegister('r2'));
+        this.push(this.getRegister('r3'));
+        this.push(this.getRegister('r4'));
+        this.push(this.getRegister('r5'));
+        this.push(this.getRegister('r6'));
+        this.push(this.getRegister('r7'));
+        this.push(this.getRegister('r8'));
+        this.push(this.getRegister('ip'));
+        this.push(this.stackFrameSize + 2);
+
+        this.setRegister('fp', this.getRegister('sp'));
+        this.stackFrameSize = 0;
+    }
+
     fetchRegisterIndex() {
         return (this.fetch() % this.registerNames.length) * 2
     }
@@ -160,6 +176,7 @@ class CPU {
             case instructions.PSH_REG: {
                 const registerIndex = this.fetchRegisterIndex()
                 this.push(this.registers.getUint16(registerIndex))
+                return
             }
 
             // pop
@@ -167,6 +184,17 @@ class CPU {
                 const registerIndex = this.fetchRegisterIndex()
                 const value = this.pop()
                 this.registers.setUint16(registerIndex, value)
+                return
+            }
+
+            // call literal
+            case instructions.CAL_LIT: {
+                const address = this.fetch16()
+
+                this.pushState();
+
+
+                return
             }
         }
     }
